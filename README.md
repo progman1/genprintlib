@@ -42,8 +42,15 @@ CMTPATH=_build/default/test/.test.eobjs/byte dune exec ./test/test.exe
 where a [test] directory contains some test source code.
 
 
-The library is [genprint] and the ppx extension is [genprintppx], for both byte and optimising
+The library is [genprint] and the ppx extension is [genprint.ppx], for both byte and optimising
 compilation.
+
+See the test/dune file for __dune__ building with PPX.
+Otherwise, for example:
+
+```
+ocamlc -ppx '~/.opam/default/lib/genprint/ppx/ppx.exe --as-ppx' <src>
+```
 
 # Limitations
 This Genprint library cannot be used in the ocaml toplevel except in as much as loading objects already

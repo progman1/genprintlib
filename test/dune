@@ -1,7 +1,7 @@
 (executable
  (name pp)
  (modules pp)
- (libraries genprint.lib ppxlib))
+ (libraries genprint ppxlib))
 
 (rule
  (targets pp.result)
@@ -16,14 +16,14 @@
 ;(test
 ; (name test)
 ; (modules test)
-; (preprocess (pps ppx_genprint)))
+; (preprocess (pps genprint.ppx)))
 
 ;(test
 (executable
   (name test)
   (modules test)
 ;  (modes byte native)
-  (libraries genprint.lib)
+  (libraries genprint)
   (preprocess (pps genprint.ppx))
 )
 

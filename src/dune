@@ -10,7 +10,7 @@
 )
 
 (library
- (public_name genprint.lib)
+ (public_name genprint)
  (name genprint)
  (modules genprintval genprint)
  (libraries compiler-libs.common)

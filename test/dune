@@ -18,18 +18,16 @@
 ; (modules test)
 ; (preprocess (pps genprintppx)))
 
-;invoke with [dune run test] ... run ? where's that?!
 ;(test
 (executable
   (name test)
-;  (public_name go)
   (modules test)
-;  (modes native)
-  (modes byte native)
+;  (modes byte native)
   (libraries genprint)
   (preprocess (pps genprintppx))
 )
 
+;invocation with [dune run test] seems to work
 ;invoke with dune build @run
 (alias
  (name run)

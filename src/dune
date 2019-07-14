@@ -1,8 +1,8 @@
 (library
 ; cannot have simultaneous installs [(package ...)] until >1.9.3
  (public_name genprint.ppx)
- (name genprintppx)
- (modules genprintppx)
+ (name ppx_genprint)
+ (modules ppx_genprint)
  (wrapped true)
  (kind ppx_rewriter)
  (libraries ppxlib)

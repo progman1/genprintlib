@@ -1,7 +1,7 @@
 (executable
  (name pp)
  (modules pp)
- (libraries genprintppx ppxlib))
+ (libraries ppx_genprint ppxlib))
 
 (rule
  (targets pp.result)
@@ -16,7 +16,7 @@
 ;(test
 ; (name test)
 ; (modules test)
-; (preprocess (pps genprintppx)))
+; (preprocess (pps ppx_genprint)))
 
 ;(test
 (executable
@@ -24,7 +24,7 @@
   (modules test)
 ;  (modes byte native)
   (libraries genprint)
-  (preprocess (pps genprintppx))
+  (preprocess (pps ppx_genprint))
 )
 
 ;invocation with [dune run test] seems to work

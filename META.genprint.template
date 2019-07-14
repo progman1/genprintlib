@@ -1,0 +1,9 @@
+# DUNE_GEN
+
+package "lib" (
+  description = "bla"
+)
+package "ppx" (
+  description = "bla"
+)
+

@@ -1,0 +1,15 @@
+;(executable
+;  (name test)
+;;  (public_name go)
+;  (modules test)
+;  (modes byte)
+;  (libraries genprint unix)
+;  (preprocess (pps genprintppx))
+;)
+
+(env
+  (dev
+    (flags (:standard -w -A))
+;    (flags (:standard -warn-error -A))
+))
+

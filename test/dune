@@ -1,0 +1,38 @@
+(executable
+ (name pp)
+ (modules pp)
+ (libraries genprintppx ppxlib))
+
+(rule
+ (targets pp.result)
+ (deps test.ml)
+ (action (run ./pp.exe --impl %{deps} -o %{targets}))
+)
+
+(alias
+ (name runtest)
+ (action (diff pp.expected pp.result)))
+
+;(test
+; (name test)
+; (modules test)
+; (preprocess (pps genprintppx)))
+
+;invoke with [dune run test] ... run ? where's that?!
+;(test
+(executable
+  (name test)
+;  (public_name go)
+  (modules test)
+;  (modes native)
+  (modes byte native)
+  (libraries genprint)
+  (preprocess (pps genprintppx))
+)
+
+;invoke with dune build @run
+(alias
+ (name run)
+ (deps test.exe)
+ (action (run ./test.exe))
+)

@@ -1,0 +1,17 @@
+(library
+ (name genprintppx)
+; cannot have simultaneous installs until >1.9.3
+; (public_name ppx_genprint)
+ (modules genprintppx)
+ (wrapped true)
+ (kind ppx_rewriter)
+ (libraries ppxlib)
+ (preprocess (pps ppxlib.metaquot))
+)
+
+(library
+ (name genprint)
+ (public_name genprint)
+ (modules genprintval genprint)
+ (libraries compiler-libs.common)
+)

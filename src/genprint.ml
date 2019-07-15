@@ -224,9 +224,10 @@ let print s v' =
     |Some cmtfile->
       let cmt=Cmt_format.read_cmt cmtfile in
       (* ensure the info is consistent with the running program *)
+(*
       let intf = cmt.cmt_interface_digest
       and imports = cmt.cmt_imports in
-
+*)
       check_consistency cmt;
 
       begin match cmt.cmt_annots with

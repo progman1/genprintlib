@@ -1,5 +1,4 @@
 opam-version: "2.0"
-name: "Genprint"
 version: "0.1"
 synopsis: "PPX syntax extension and library package for printing values of any type"
 description: """
@@ -9,16 +8,22 @@ Useful for debugging as a quick alternative to ocamldebug/ppx_deriving/#install_
 
 maintainer: "progman1"
 authors: [ "progman1" ]
-homepage: "github.com/progman1/genprintlib"
+homepage: "https://github.com/progman1/genprintlib"
+bug-reports: "https://github.com/progman1/genprintlib/issues"
 dev-repo: "git+https://github.com/progman1/genprintlib.git"
-bug-reports: "progman1"
+
 build: [
   ["dune" "subst"] {pinned}
-  ["dune" "build" "-p" "genprint"]
+  ["dune" "build" "-p" name "-j" jobs]
 ]
 
 depends: [
-  "ocaml" {build} # {>= "4.07.1"}
+  "ocaml" {build}
+  "dune"
   "ppxlib"
 ]
 
+url {
+  src: "https://github.com/progman1/genprintlib/archive/0.1.tar.gz"
+  checksum: "5def9ff8c3c0ebe2b71cbedd3af4070eade1b992"
+}

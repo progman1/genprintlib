@@ -13,24 +13,16 @@
  (name runtest)
  (action (diff pp.expected pp.result)))
 
-;(test
-; (name test)
-; (modules test)
-; (preprocess (pps genprint.ppx)))
-
-;(test
 (executable
   (name test)
   (modules test)
-;  (modes byte native)
   (libraries genprint)
   (preprocess (pps genprint.ppx))
 )
 
-;invocation with [dune run test] seems to work
 ;invoke with dune build @run
 (alias
  (name run)
- (deps test.exe)
- (action (run ./test.exe))
+ (deps test.bc)
+ (action (system "CMTPATH=test/.test.eobjs/byte ./test.bc") )
 )

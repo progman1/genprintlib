@@ -16,12 +16,6 @@
  (libraries compiler-libs.common)
 )
 
-;(rule
-; (targets genprintval.ml)
-; (deps ...)
-; (action (copy genprintval.ml-4.08 genprintval.ml ))
-;)
-
 (alias
  (name go)
  (deps aa.ml)

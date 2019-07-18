@@ -30,10 +30,17 @@
 
 (alias
  (name epoc1)
- (action (copy genprintval.ml-epoc1 genprintval.ml ))
-)
+ (deps genprintval.ml-epoc1 genprintval.mli-epoc1)
+ (action (progn
+         (run %{bin:cp} genprintval.ml-epoc1 ../../../src/genprintval.ml )
+         (run %{bin:cp} genprintval.mli-epoc1 ../../../src/genprintval.mli )
+ )))
 
 (alias
  (name epoc2)
- (action (copy genprintval.ml-epoc2 genprintval.ml ))
-)
+ (deps genprintval.ml-epoc2 genprintval.mli-epoc2)
+ (action (progn
+         (run %{bin:cp} genprintval.ml-epoc2 ../../../src/genprintval.ml )
+         (run %{bin:cp} genprintval.mli-epoc2 ../../../src/genprintval.mli )
+ )))
+

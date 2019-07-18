@@ -16,12 +16,6 @@
  (libraries compiler-libs.common)
 )
 
-(alias
- (name go)
- (deps aa.ml)
- (action (run %{bin:cp} aa.ml ../../../src/bb.ml))
-)
-
 ; how incredibly ugly - to accommodate a compiler version change effecting 2 files...
 (alias
  (name epoc1)

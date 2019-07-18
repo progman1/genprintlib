@@ -164,6 +164,7 @@ module EvalPath = struct
   let eval_path env p = try eval_path env p with Symtable.Error _ -> raise Error
   let same_value v1 v2 = (v1 == v2)
 *)
+ let eval_address _env = failwith "evalpath: unimplemented"
  let eval_path _env _p = failwith "evalpath: unimplemented"
  let same_value _v1 _v2 = failwith "evalpath: unimplemented"
 end

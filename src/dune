@@ -28,6 +28,7 @@
  (action (run %{bin:cp} aa.ml ../../../src/bb.ml))
 )
 
+; how incredibly ugly - to accommodate a compiler version change effecting 2 files...
 (alias
  (name epoc1)
  (deps genprintval.ml-epoc1 genprintval.mli-epoc1)

@@ -1,4 +1,7 @@
 opam-version: "2.0"
+#name: "genprint"
+#version: "0.1"
+
 synopsis: "PPX syntax extension and library package for printing values of any type"
 description: """
 A PPX syntax extension and library package enabling printing of values of any type using OCaml's internal printing facilities a la toplevel evaluation.
@@ -13,13 +16,16 @@ dev-repo: "git+https://github.com/progman1/genprintlib.git"
 
 build: [
   ["dune" "subst"] {pinned}
-  ["dune" "build" "-p" name "-j" jobs]
+  ["dune" "build"  "@epoc1"] {ocaml:version  <"4.08.0"}
+  ["dune" "build"  "@epoc2"] {ocaml:version >="4.08.0"}
+  ["dune" "build" "-p" "genprint" "-j" jobs]
 ]
 
 depends: [
-  "ocaml" {>= "4.06.0" & < "4.08.0" }
-  "dune"
-  "ppxlib"
+#  "ocaml" {>= "4.06.0" & < "4.08.0" }
+  "ocaml" {>= "4.06.0" }
+  "dune" {build}
+  "ppxlib" {build}
 ]
 
 url {

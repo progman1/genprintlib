@@ -36,6 +36,12 @@
 (rule
  (targets genprintval.ml genprintval.mli)
  (deps  mkgenprintval.ml
-        genprintval.ml-epoc1 genprintval.mli-epoc1
-        genprintval.ml-epoc2 genprintval.mli-epoc2)
+        genprintval.ml-2 genprintval.mli-2
+        genprintval.ml-3 genprintval.mli-3
+        genprintval.ml-4 genprintval.mli-4
+        genprintval.ml-5 genprintval.mli-5
+        genprintval.ml-6 genprintval.mli-6
+        genprintval.ml-7 genprintval.mli-7
+        genprintval.ml-8 genprintval.mli-8
+ )
  (action (run %{ocaml} unix.cma mkgenprintval.ml)))

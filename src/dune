@@ -33,3 +33,9 @@
          (run %{bin:cp} genprintval.mli-epoc2 ../../../src/genprintval.mli )
  )))
 
+(rule
+ (targets genprintval.ml genprintval.mli)
+ (deps  mkgenprintval.ml
+        genprintval.ml-epoc1 genprintval.mli-epoc1
+        genprintval.ml-epoc2 genprintval.mli-epoc2)
+ (action (run %{ocaml} unix.cma mkgenprintval.ml)))

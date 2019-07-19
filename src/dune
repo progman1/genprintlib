@@ -16,20 +16,14 @@
  (libraries compiler-libs.common stdlib-shims)
 )
 
-; how incredibly ugly - to accommodate a compiler version change effecting 2 files...
-(alias
- (name epoc1)
- (deps genprintval.ml-epoc1 genprintval.mli-epoc1)
- (action (progn
-         (run %{bin:cp} genprintval.ml-epoc1 ../../../src/genprintval.ml )
-         (run %{bin:cp} genprintval.mli-epoc1 ../../../src/genprintval.mli )
- )))
+(rule
+  (targets genprintval.ml genprintval.mli)
+  (deps make_genprintval.exe
+        genprintval.ml-epoc1 genprintval.mli-epoc1
+        genprintval.ml-epoc2 genprintval.mli-epoc2)
+  (action (run %{exe:make_genprintval.exe})))
 
-(alias
- (name epoc2)
- (deps genprintval.ml-epoc2 genprintval.mli-epoc2)
- (action (progn
-         (run %{bin:cp} genprintval.ml-epoc2 ../../../src/genprintval.ml )
-         (run %{bin:cp} genprintval.mli-epoc2 ../../../src/genprintval.mli )
- )))
-
+(executable
+  (name make_genprintval)
+  (modules make_genprintval)
+  (libraries unix))

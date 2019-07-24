@@ -13,7 +13,7 @@
  (public_name genprint)
  (name genprint)
  (modules genprintval genprint)
- (libraries compiler-libs.common)
+ (libraries compiler-libs.common stdlib-shims)
 )
 
 (rule

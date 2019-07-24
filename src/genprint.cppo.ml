@@ -42,7 +42,11 @@ let search_dirs= ref(
 
 (* cmi locations are cmtpath + rec stdlib *)
 let _=
+#if OCAML_VERSION < (4,08,0)
   Config.load_path := !search_dirs @  expand [] Config.standard_library @ !Config.load_path
+#else
+  Load_path.init @@ !search_dirs @  expand [] Config.standard_library
+#endif
 
 let search file=
   let exception Found of string in

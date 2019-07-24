@@ -13,7 +13,14 @@
  (public_name genprint)
  (name genprint)
  (modules genprintval genprint)
- (libraries compiler-libs.common )
+ (libraries compiler-libs.common)
+)
+
+(rule
+ (targets genprint.ml)
+ (deps genprint.cppo.ml)
+ (action (run %{bin:cppo} -V OCAML:%{ocaml_version} %{deps} -o %{targets} ))
+; (action (with-stdout-to %{targets} (run %{bin:cppo} -V OCAML:%{ocaml_version} %{deps} -o %{targets} )))
 )
 
 (rule

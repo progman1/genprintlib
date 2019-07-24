@@ -1,4 +1,4 @@
-[![Build Status] (https://travis-ci.org/progman1/genprintlib.svg?branch=master)] (https://travis-ci.org/progman1/genprintlib)
+![travis-ci] (https://travis-ci.org/progman1/genprintlib.svg?branch=master)
 
 # Genprint
 

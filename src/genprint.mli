@@ -1,4 +1,4 @@
-(* t is abstract: this function cannot be called other than through the ppx extension. *)
+(* this function cannot be called other than through the ppx extension. *)
 val print: string -> 'a -> unit
 
 (* depth/steps initialised from Toploop versions *)

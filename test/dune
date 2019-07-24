@@ -24,5 +24,5 @@
 (alias
  (name run)
  (deps test.bc)
- (action (system "CMTPATH=test/.test.eobjs/byte ./test.bc") )
+ (action (system "CMTPATH=.test.eobjs/byte ./test.bc") )
 )

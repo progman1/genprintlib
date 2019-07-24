@@ -38,18 +38,34 @@ With __Dune__ a possible invocation might be:
 ```
 CMTPATH=_build/default/test/.test.eobjs/byte dune exec ./test/test.exe
 ```
+as per [test/dune](test/dune).
 
-where a [test] directory contains some test source code.
+Directories can be marked for recursive search:
+```
+CMTPATH=r\ _build dune  exec ./test/test.exe
+```
+Note the escape of the space. Also note that quoting prevents expansion of ~.
 
+Using recursion can lead to identically named modules from different libraries/contexts being
+picked up, so use the exclusion form to prevent such collisions:
+```
+CMTPATH=r\ _build dune:x\ _build/default/bad/.bad.eobjs/byte exec ./test/test.exe exec ./test/test.exe
+```
 
-The library is [genprint] and the PPX extension is [genprint.ppx], for both byte and optimising
-compilation.
+The variable name CMTPATH is a misnomer - it is also used like [ocamlc -I ...] for .cmi files which
+are also needed for printing. 
+For instance [%pr the stdlib [%here] ] would need to find ```Lexing.cmi```.
+The OCaml standard library location is already included (recursively) so this prints, but the 
+rest of the directories under one's switch library directory are not.
 
-See the test/dune file for __Dune__ building with PPX.
-Otherwise, for example:
+For building, the library is [genprint] and the PPX extension is [genprint.ppx], for both byte and optimising compilation:
+```
+ocamlc -ppx '~/.opam/default/lib/genprint/ppx/ppx.exe --as-ppx' -I +../genprint genprint.cma <src>
+```
+and with ocamlfind:
 
 ```
-ocamlc -ppx '~/.opam/default/lib/genprint/ppx/ppx.exe --as-ppx' genprint.cma <src>
+ocamlfind ocamlc -package genprint -package genprint.ppx -linkpkg  <name>.ml -o <name>
 ```
 
 # Limitations
@@ -58,7 +74,8 @@ compiled with embedded printing statements and for which a .cmt file exists.
 
 Genprint uses the compiler internals to do the actual printing and so will
 display ```<poly>``` for values than do not have an instantiated type (or for parts thereof).
-So avoid embedding this printer into a polymorphic context.
+So avoid embedding this printer into a polymorphic context ie. do not try creating a printing function
+around this.
 
 With the optimising compiler, the printing will fail (segmentation fault likely) where the assigned type in the .cmt does not correspond to 
 the actual value given as argument to [%pr].

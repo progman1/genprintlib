@@ -16,16 +16,13 @@ dev-repo: "git+https://github.com/progman1/genprintlib.git"
 
 build: [
   ["dune" "subst"] {pinned}
-#  ["dune" "build"  "@epoc1"] {ocaml:version  <"4.08.0"}
-#  ["dune" "build"  "@epoc2"] {ocaml:version >="4.08.0"}
   ["dune" "build" "-p" name "-j" jobs]
 ]
 
 depends: [
   "ocaml" {>= "4.02.0" }
   "dune"
-  "stdlib-shims"
-  "ppxlib" {build}
+  "ppxlib"
 ]
 
 url {

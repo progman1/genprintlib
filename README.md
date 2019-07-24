@@ -1,3 +1,5 @@
+[![Build Status] (https://travis-ci.org/progman1/genprintlib.svg?branch=master)] (https://travis-ci.org/progman1/genprintlib)
+
 # Genprint
 
 A one function library and PPX extension to provide general value printing

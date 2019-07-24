@@ -47,7 +47,7 @@ CMTPATH=r\ _build dune  exec ./test/test.exe
 Note the escape of the space. Also note that quoting prevents expansion of ~.
 
 Using recursion can lead to identically named modules from different libraries/contexts being
-picked up, so use the exclusion form to prevent such collisions:
+in scope and therefore a wrong one being examined, so use the exclusion form to prevent such collisions:
 ```
 CMTPATH=r\ _build dune:x\ _build/default/bad/.bad.eobjs/byte exec ./test/test.exe exec ./test/test.exe
 ```

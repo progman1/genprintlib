@@ -14,7 +14,7 @@ Used like so:
 or:
 
 ``` ocaml
-[%pr arbitrary text with Uppercase but no keywords followed by the expression (123,456)];
+[%pr arbitrary text with_ Uppercase but no keywords followed by the expression (123,456)];
 ```
 It is a unit value expression therefore terminated by ';'
 
@@ -95,10 +95,12 @@ remove this abstraction and any value described by such a module would be printe
 <abstr>
 ```
 By default other installed libraries (if OCaml is at [lib/ocaml] then other libraries are assumed
-under [lib]) are treated in this way which may not always be appropriate.
-If you are seeing <abstr> printed for values from such a library, they can be made concrete by
-setting the environment variable [GENPRINT_ALL_LIBS=1]
-The default is for faster printing generally. Local project code is always made transparent.
+under [lib]) are treated as if they may have such sub-modules. 
+This may not always be appropriate as it imposes a performance cost.
+If this is annoying the environment variable [GENPRINT_ALL_LIBS=1] can be used to prevent the 
+search, which is appropriate if the values one is interested in are not displayed as __<abstr>__
+as a result.
+Local project code is always scanned for sub-modules.
 
 # Customised Printing?
 

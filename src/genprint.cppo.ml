@@ -1021,7 +1021,7 @@ let print_with_return s i v = print_joint true s i v
 type 'a printer_type = Format.formatter -> 'a -> unit
 
 let printer_type env =
-#if OCAML_VERSION < (4,09,0)
+#if OCAML_VERSION < (4,10,0)
   Env.lookup_type (Ldot(Lident "Genprint", "printer_type")) env
 #else
   fst @@ Env.lookup_type ~loc:Location.none (Ldot(Lident "Genprint", "printer_type")) env

@@ -1,3 +1,14 @@
+junk/
+.genprint.cache
+test/
+META.genprint.template
+Makefile
+install.cmd
+notes
+opam.disabled
+.emacs.desktop
+.project
+
 *.annot
 *.cmo
 *.cma

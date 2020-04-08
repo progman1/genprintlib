@@ -23,7 +23,6 @@ open Types
 open Outcometree
 module Out_name = Printtyp.Out_name
 
-
 module type OBJ =
   sig
     type t
@@ -381,7 +380,6 @@ module Make(O : OBJ)(EVP : EVALPATH with type valu = O.t) = struct
                 | {type_kind = Type_abstract; type_manifest = None} ->
                    let mkout env = outval_of_value !printer_steps depth check_depth env obj ty in
                    EVP.unabstract_type path env mkout
-                (* will raise not-found for same result below *)
                     (* Oval_stuff "<abstr>" *)
                 | {type_kind = Type_abstract; type_manifest = Some body} ->
                     tree_of_val depth obj

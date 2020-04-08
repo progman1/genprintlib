@@ -12,10 +12,16 @@
 (library
  (public_name genprint)
  (name genprint)
- (modules genprintval genprint)
- (libraries compiler-libs.common stdlib-shims)
+ (modules genprintval genprint )
+ ; for the sake of =< 4.05 compiler-libs.bytecomp included, but for later versions not linked
+ (libraries unix compiler-libs.common compiler-libs.bytecomp stdlib-shims)
 )
 
+(rule
+ (targets ppx_genprint.ml)
+ (deps ppx_genprint.cppo.ml)
+ (action (run %{bin:cppo} -V OCAML:%{ocaml_version} %{deps} -o %{targets} ))
+)
 (rule
  (targets genprint.ml)
  (deps genprint.cppo.ml)
@@ -23,15 +29,28 @@
 ; (action (with-stdout-to %{targets} (run %{bin:cppo} -V OCAML:%{ocaml_version} %{deps} -o %{targets} )))
 )
 
+;(rule
+; (targets genprintval.ml genprintval.mli)
+; (deps  mkgenprintval.ml
+;        genprintval.ml-2 genprintval.mli-2
+;        genprintval.ml-3 genprintval.mli-3
+;        genprintval.ml-4 genprintval.mli-4
+;        genprintval.ml-5 genprintval.mli-5
+;        genprintval.ml-6 genprintval.mli-6
+;        genprintval.ml-7 genprintval.mli-7
+;        genprintval.ml-8 genprintval.mli-8
+; )
 (rule
- (targets genprintval.ml genprintval.mli)
+ (targets genprintval.ml)
  (deps  mkgenprintval.ml
-        genprintval.ml-2 genprintval.mli-2
-        genprintval.ml-3 genprintval.mli-3
-        genprintval.ml-4 genprintval.mli-4
-        genprintval.ml-5 genprintval.mli-5
-        genprintval.ml-6 genprintval.mli-6
-        genprintval.ml-7 genprintval.mli-7
-        genprintval.ml-8 genprintval.mli-8
+        genprintval.ml-2
+        genprintval.ml-3
+        genprintval.ml-4
+        genprintval.ml-5
+        genprintval.ml-6
+        genprintval.ml-7
+        genprintval.ml-8
+        genprintval.ml-9
+        genprintval.ml-10
  )
  (action (run %{ocaml} unix.cma mkgenprintval.ml)))

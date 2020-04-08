@@ -28,5 +28,5 @@ depends: [
 
 url {
   src: "https://github.com/progman1/genprintlib/archive/v0.3a.tar.gz"
-  checksum: "md5=337ab52d6db6c291eefbbdd773fc82d9"
+  checksum: "md5=af5ac50329278ffc51f77ecbecfb99a8"
 }

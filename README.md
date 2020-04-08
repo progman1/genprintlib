@@ -98,7 +98,7 @@ By default other installed libraries (if OCaml is at [lib/ocaml] then other libr
 under [lib]) are treated as if they may have such sub-modules. 
 This may not always be appropriate as it imposes a performance cost.
 If this is annoying the environment variable [GENPRINT_ALL_LIBS=1] can be used to prevent the 
-search, which is appropriate if the values one is interested in are not displayed as __<abstr>__
+search, which is appropriate if the values one is interested in are not displayed as ```<abstr>```
 as a result.
 Local project code is always scanned for sub-modules.
 

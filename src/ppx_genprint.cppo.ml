@@ -60,6 +60,23 @@ let () =
     ~enclose_impl:set_loadpath
     "genprint-loadpath" ~extensions:[]
 
+(* cache mode can be detected by examining data as loaded
+(* used internally *)
+val ppx_mode: bool ref
+
+let set_ppxmode locopt =
+  let loc = match locopt with
+    | None-> Location.none
+    | Some loc->loc
+  in
+  [[%stri let _ = Genprint.ppx_mode:=true ]], []
+
+(* put this value into every compiled unit once *)
+let () =
+  Driver.register_transformation
+    ~enclose_impl:set_ppxmode
+    "genprint-ppxmode" ~extensions:[]
+*)
 
 
 let expand ~loc ~path (e : expression) =

@@ -60,7 +60,7 @@ hash table => (888,
                                 seed = 0; initial_size = 16},
                                888)
 ```
-This printer will look behind abstracting interfaces brought about by functor application:
+This printer will look behind abstracting interfaces created by functor application:
 
 ``` ocaml
 module SM = Map.Make(struct type t = string let compare = compare end)
@@ -86,9 +86,9 @@ export OCAMLPARAM="_,-bin-annot=1"
 This will ensure that all compilations generate annotation files, which are needed anyway for
 __Merlin__ to function fully, and __Dune__ has this flag set by default.
 
-Genprint assumes the standard library defines no sub-modules (excepting Ephemerons).
+__Genprint__ assumes the standard library defines no sub-modules (excepting Ephemerons).
 If there were, while being 
-constrained by a signature (in the ml source rather than by mli) then Genprint would not
+constrained by a signature (in the ml source rather than by mli) then __Genprint__ would not
 remove this abstraction and any value described by such a module would be printed as
 
 ``` ocaml
@@ -153,7 +153,7 @@ where __staged_pps__ is used rather than __pps__ in order for the .cmt file loca
 to work.
 
 To compile with print statements left in-place while removing them from the compiled code
-set the environment variable __GENPRINT_REMOVE=1__.
+set the environment variable [GENPRINT_REMOVE=1].
 The resulting parsetree still has no-op artefacts but these are removed
 by __ocamlopt__ or the flambda variant.
 This would be a nice convenience if it were not for the fact that the resultant binary
@@ -161,13 +161,33 @@ is still linked with the compiler-libs library, on which there should be no depe
 I do not know why that is at present.
 
 To disable printing at runtime with print statements compiled in,
-set the variable __GENPRINT_NOPRINT=1__.
+set the variable [GENPRINT_NOPRINT=1].
+
+# Ocamldebug
+
+A personal obstacle to using __ocamldebug__ has been the frustrating appearance of
+```<abstr>``` for many a value I wanted to look at, especially at the
+thrashing-around-without-a-clue stage of debugging when I'd rather not be coding 
+printing functions and installing them under the debugger only to abandon them when it 
+becomes apparent a particular is of no interest after all.
+This repo contains two dunified versions of the debugger extracted from compiler sources,
+modified to use __Genprint__ as the default printer. The modifications are minor
+and easily transferred to other versions.
+An example invocation:
+``` ocaml
+dune exec debugger/4.10.0/main.bc -- <path to sample cmo> -I <includes>
+```
+or drop into your Dune project as required.
+By default __Genprint__ will issue a warning for modules unfound. Values involving types
+from such will display as ```<abstr>```. Adjust the include-arguments to correct - unlike
+with the emdedded printing such paths are not automatically taken care of.
+To disable the warning set the environment variable [GENPRINT_IGNORE_MISSING=1]
 
 # Limitations
-This Genprint library cannot be used in the ocaml toplevel except in as much as loading objects already
+This __Genprint__ library cannot be used in the ocaml toplevel except in as much as loading objects already
 compiled with embedded printing statements and for which a .cmt file exists.
 
-Genprint uses the compiler internals to do the actual printing and so will
+__Genprint__ uses the compiler internals to do the actual printing and so will
 display ```<poly>``` for values that do not have an instantiated type (or for parts thereof).
 So avoid embedding this printer into a polymorphic context ie. do not create a printing function
 around this without ensuring a concrete type is being inferred by the typechecker or otherwise 
@@ -176,7 +196,7 @@ providing an explicit constraint.
 Printing can sometimes be slow due to the amount of processing needed to reveal concrete types
 built-up from layers of modules. This is minimised after the first compilation due to caching
 of results. The file [.genprint.cache] is used for this. It can be deleted at any point.
-It should be deleted whenever setting/unsetting the __GENPRINT_ALL_LIBS__ environment variable
+It should be deleted whenever setting/unsetting the [GENPRINT_ALL_LIBS] environment variable
 or changing the value via [Genprint.all_libs_opaque]. 
 [GENPRINT_ALL_LIBS=1] or [Genprint.all_libs_opaque true] has the effect of preventing the
 recursive analysis of library modules outside of the OCaml library directory.
@@ -188,20 +208,12 @@ The abstraction of data types removed by this printer relates only to that intro
 module implementation level (.mli interface files) and explicit signatures written into
 .ml sources as used in module expressions. It does not deal at all with class types, another 
 means of abstraction.
-Indeed the REPL printer upon which Genprint is based outputs only
-``` ocaml
-<obj>
-```
-for any object.
+Indeed the REPL printer upon which __Genprint__ is based outputs only
+```<obj>``` for any object.
 
-I think, in principle, something better could be achieved. Perhaps if there is demand for it.
+I think, in principle, something better could be achieved.
 
 # Feedback
 
-This is experimental software! If you encounter a problem please raise an issue.
-
-# Future Direction
-
-An obstacle to using __ocamldebug__ has always been the frustrating appearance of
-<abstr> for many a value I wanted to look at.
-It should be possible to integrate (or better, as a loadable module) the Genprint default printer.
+This is experimental software! If you encounter a problem or can suggest an improvement/addition
+please raise an issue.

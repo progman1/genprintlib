@@ -1,6 +1,8 @@
 Genprint v0.3
 ----------------
 
+- integration with ocamldebug (4.07.1/4.10.0 only)
+
 - drawbacks of the prior version dealt with:
   * didn't work at all on 4.08
   * needed an environment variable set to locate .cmt files when working with Dune
@@ -10,7 +12,8 @@ Genprint v0.3
   visible, which applies to modules both statically defined and in expression form.
   the range of compiler versions tested: 4.04.2 -> 4.10.0
 
-- [%printer <name>] added to install a custom printer as per the REPL
+- [%install_printer <name>] / [remove_printer <name>] added to install/remove a
+  custom printer as per the REPL
 
 Genprint v0.1/v0.2
 ----------------------

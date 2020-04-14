@@ -1,0 +1,18 @@
+(env
+ (release
+   (flags (:standard -absname -w +a-4-9-41-42-44-45-48 -warn-error A 
+          -safe-string -strict-sequence -strict-formats 
+;-w -31
+)))
+ (dev
+   (flags (:standard -w -31))
+))
+
+(executable
+ (name main)
+ (modules_without_implementation parser_aux)
+ (link_flags -linkall)
+ (libraries genprint unix dynlink)
+)
+(ocamlyacc parser)
+(ocamllex lexer)

@@ -1,11 +1,12 @@
 (* This file is free software. See file "license" for more details. *)
 
-[@@@warning "-26-27-34-39"]
-[@@@warning "-16"]
+(* [@@@warning "-26-27-34-39-16"] *)
+
+let debug=false
 
 open Typedtree
 
-(* the partial typechecking in will otherwise repeat compiler warnings so turned off   *)
+(* the partial typechecking inside will otherwise repeat compiler warnings so turned off *)
 let _=
   Warnings.parse_options false "-a"
 
@@ -48,30 +49,26 @@ let expand (l: string list) : string list =
   let expanded = List.fold_left mk_unrec [] l in
   List.fold_left (fun acc x -> List.filter (exclude x) acc) expanded !excludes
 
-(* dune et al, put the build artefacts away from the source *)
+(* dune et al, puts the build artefacts away from the source *)
 
-let search_dirs=ref []
 let extra_dirs=ref []
 (* cmi locations are cmtpath + rec stdlib *)
 let set_loadpath dirs =
-  (* search_dirs := dirs @ !search_dirs ; *)
-  search_dirs := dirs @ !extra_dirs;
+  let ds = dirs @ !extra_dirs in
 #if OCAML_VERSION < (4,08,0)
-  Config.load_path := !search_dirs 
+  Config.load_path := ds 
 (* @  expand [] Config.standard_library @ !Config.load_path *)
 #else
-  Load_path.init !search_dirs 
+  Load_path.init ds
 (* @  expand [] Config.standard_library *)
 #endif
 
-let get_loadpath () = !search_dirs
-(*
+let get_loadpath () = 
 #if OCAML_VERSION < (4,08,0)
   !Config.load_path
 #else
   Load_path.get_paths()
 #endif
-*)
 
 (* for user to set additional dirs *)
 (* ... just set extras and allow the oft called set-loadpath to incorporate it *)
@@ -83,6 +80,9 @@ let cmtpath l=
     failwith("Genprint: incorrect cmtpath format: "^Printexc.to_string exn)
 
 let envar_set name = try ignore@@Sys.getenv name;true with _->false
+
+let ignore_missing = ref @@envar_set "GENPRINT_IGNORE_MISSING"
+
 (* when stdlib-restricted is true that is to say only ocaml libs are regarded as opaque *)
 let stdlib_restricted = ref @@ not@@envar_set "GENPRINT_ALL_LIBS"
 let all_libs_opaque b= stdlib_restricted:= not b
@@ -106,7 +106,7 @@ let excepted file=
 let find_cmt modname=
 (* print_endline@@"FIND CMT"^modname; *)
   let file = 
-      Misc.find_in_path_uncap !search_dirs (modname ^ ".cmt")
+      Misc.find_in_path_uncap (get_loadpath()) (modname ^ ".cmt")
   in
   file
 
@@ -127,7 +127,11 @@ let is_library file=
   let inlib=regard_as_opaque in
   inlib
 
-
+(* to distinguish between inline print statement use and ocamldebug *)
+(* - debugger requires all tt structures to be available for location/scope searching
+   and an effort is made to minimise ppx cache size by excluding tt trees though a
+   debugger generated cache is fine for the ppx code to use. *)
+let ppx_mode = ref true
 
 (* save cache(s) to disk. computed signatures are expensive and could encompass all
    modules of a project plus its libraries.*)
@@ -142,12 +146,24 @@ type globalsig={
     gs_timestamp: float;
     gs_unique_id: int;          (* gives order of addition *)
     gs_loadpath: string list;
+    gs_structure: Typedtree.structure option;
+    gs_valid: bool;             (* since whole files are processed and partial success may be
+                                   enough for the intended printing, this flag allows identifying
+                                   the failed parts and eliminating them on next load. *)
   }
 
 (* signatures derived from unabstracted parsetrees *)
 let sig_cache = Hashtbl.create 5 
 (* recording of print calling sites to enable matching typedtree type info  *)
 let pr_cache = Hashtbl.create 5
+
+(* when cache was previously populated by ppx print prompted sigs, without structures,
+   and debugger now needs them. Saves some resource.
+*)
+let empty_cache()=
+  Hashtbl.clear pr_cache;
+  Hashtbl.clear sig_cache;
+  cache_count:=0
 
 (* loading of cache necessitates re-processing of out-of-date cmt's *)
 let process_cmt_fwd = ref (fun _ -> assert false) (* set before load_cache runs *)
@@ -161,12 +177,9 @@ let load_cache()=
     (* needs a correct loadpath before running env-of-only-summary. so not using it! *)
     Hashtbl.iter (fun k (p,ty,env) ->
         Hashtbl.add pr_cache k (p,ty, (*Envaux.env_of_only_summary*) env)) tcache;
-
-    let reduced_ty_cache = Hashtbl.(create 5) in
-    (* Hashtbl.iter (fun k (p,ty,env) -> Hashtbl.add reduced_ty_cache k (p,ty, (\*Envaux.env_of_only_summary*\) env)) tcache; *)
-    (* run through the cache in order of addition and update out-of-date info *)
     let all = ref [] in
-    Hashtbl.iter (fun k d->all := (k,d):: !all) scache;
+    (* filter cache of not-fully-processed sigs to allow for a re-attempt *)
+    Hashtbl.iter (fun k gs-> if gs.gs_valid then all := (k,gs):: !all) scache;
     (* to avoid re-processing of depended-upon modules, ensure they are loaded and so will be
      found should a process-cmt be invoked, by doing so in the original addition order *)
     let sorted = List.sort (fun (_k,gsig) (_k',gsig') ->
@@ -175,7 +188,7 @@ let load_cache()=
                        gsig'.gs_unique_id
                    ) !all in
 
-    (* re-process the changed cmts in same order of original processing *)
+    (* run through the changed cmts in order of addition and update out-of-date info *)
     List.iter (fun (k, gsig) ->
         if (Unix.stat gsig.gs_cmtfile).st_mtime > gsig.gs_timestamp then 
           (set_loadpath gsig.gs_loadpath;
@@ -185,6 +198,11 @@ let load_cache()=
           Hashtbl.add sig_cache k gsig
       ) sorted;
 
+    (* if one contains structure then consider the whole cache as generated in debugger mode *)
+    if !all<>[] then begin
+        let (_,gsig) = List.hd !all in
+        if gsig.gs_structure<>None then ppx_mode:=false;
+      end;
     (* intended for insertion into an object but put aside for now *)
     count, sig_cache, pr_cache
   with
@@ -192,7 +210,8 @@ let load_cache()=
   | _-> failwith@@ "Genprint: corrupted "^ cachefile ^". Try deleting it."
 
 
-let record_sig modsig file=
+let record_sig valid modsig file str =
+  (* retain the unique id to preserve ordering *)
   let uid=try
     let gsig = Hashtbl.find sig_cache file in
     gsig.gs_unique_id
@@ -204,9 +223,12 @@ let record_sig modsig file=
               gs_timestamp=(Unix.stat file).st_mtime;
               gs_unique_id=uid;
               gs_loadpath=get_loadpath();
+              gs_structure= if !ppx_mode then None else Some str;
+              gs_valid=valid;
              }
   in
-  Hashtbl.replace sig_cache file gsig
+  Hashtbl.replace sig_cache file gsig;
+  gsig
 
 let save_cache()=
   let ch=open_out_bin cachefile in
@@ -220,9 +242,9 @@ let save_cache()=
 
 let add_pr = Hashtbl.replace pr_cache
 let find_pr = Hashtbl.find pr_cache
-let find_gsig = Hashtbl.find sig_cache
+let find_globalsig = Hashtbl.find sig_cache
 
-(* abandoned for now. needed assignment to a 'let rec' value.
+(* abandoned for now. needed assignment to a 'let rec' value disalllowed.
 class ['a,'b,'c,'d] cache (fwd: string->string->Types.signature_item) =
   let (c,scache,pcache)=(process_cmt_fwd:=fwd;load_cache()) in
   object (self)
@@ -250,51 +272,6 @@ class ['a,'b,'c,'d] cache (fwd: string->string->Types.signature_item) =
     method find_pr (k: int * string) =Hashtbl.find pr_cache k
     method add_pr k v = Hashtbl.replace pr_cache k v
   end
-*)
-
-(*
-let predefs=Predef.[|
-  path_int;
-  path_char;
-  path_bytes;
-  path_float;
-  path_bool;
-  path_unit;
-  path_exn;
-  path_array;
-  path_list;
-  path_option;
-  path_nativeint;
-  path_int32;
-  path_int64;
-  path_lazy_t;
-  path_string;
-  path_extension_constructor;
-  path_floatarray;
-|]
-
-
-(* genprintval will silently <abstr> what it cannot find so flush out as an error now *)
-let iter_type_expr env ty =
-  let rec it_path p=
-      (* is it local? *)
-#if OCAML_VERSION < (4,08,0)
-    if Ident.global (Path.head p) then
-#else
-    (* pre 4.08 predefs were created non-global/non-predef so not checked.
-       post 4.08 they are created as predefs which also counts as global.
-    *)
-    (* if true ||not (Array.exists (Path.same p) predefs) then *)
-    (* if Ident.global (Path.head p) && not (Array.exists (Path.same p) predefs) then *)
-#endif
-      try
-        (* not finding it now is flagged *)
-        ignore @@ Env.find_type p env
-      with Not_found ->
-        failwith("Genprint: cannot find type [" ^ (Path.name p) ^"]. Adjust CMTPATH?")
-
-  and iter = {Btype.type_iterators with it_path} in
-  iter.it_type_expr iter ty
 *)
 
 
@@ -400,7 +377,7 @@ let genprint_remove_printer = Longident.parse "Genprint.remove_printer"
 
 (* typedtrees are iterated over to find occurrences of [%pr] et al, associating type info with 
    them *)
-let intercept_expression sub exp=
+let intercept_expression _sub exp=
     match exp with
     (* [%pr ... v] and [%prr ...] v *)
     | {exp_desc = Texp_apply(
@@ -465,7 +442,7 @@ let intercept_expression sub exp=
 #if OCAML_VERSION < (4,09,0)
      | _->()
 #else
-     | other -> Tast_iterator.default_iterator.expr sub other
+     | other -> Tast_iterator.default_iterator.expr _sub other
 #endif
 
 (* by 4.08 typedtreeMap -> tast_mapper
@@ -496,17 +473,6 @@ let backtrace f a=
     Printexc.print_backtrace stdout;
     raise exn
 
-(* using the PT mapper. no need for mod-exprs as no functors involved *)
-(*
-open Ast_mapper
-let pt_remap =
-  {default_mapper with
-    module_expr=fun mapper mb ->
-                match mb.mod_desc with
-                |Pmod_constraint(me,_)->
-                  (* first problem! how to recognise an externally referenced module without
-the path! it's just too early... *)
-*)
 
 
 (* the order of visitation of modules will reflect for the most part the dependency
@@ -516,7 +482,7 @@ the dependency order else stale typing info will be embedded in recomputed sigs.
 
 
 (* abandoned attempt to ascertain whether an intf is actually abstracting any types -
-assuming it does creates a bit more work. but hey...
+assuming it does create a bit more work. but hey...
 let cmi_abstraction env modname newsig=
   (* under dune the cmi will be another directory to the cmt for opt *)
   let file = Misc.find_in_path_uncap !search_dirs (modname ^ ".cmi") in
@@ -574,7 +540,7 @@ let rec split (str:structure) =
   let stritems_slots=Array.make sz false in
 
   (* the mapper will visit all levels but only want to recurse into idents when they are
-     part of a functor application. other usages don't lead to new types?  *)
+     part of a functor application. other usages don't lead to new types. true?  *)
 
   let proc_global p=
     if Ident.global (Path.head p) then(
@@ -596,13 +562,14 @@ let rec split (str:structure) =
   let unconstrain_mod me=
     match me.mod_desc with
     | Tmod_ident(p,_lidloc) ->
+(* Printf.printf "MIDENT %s %b/%b\n" (Path.name p)(Ident.global @@ Path.head p) (!level>0); *)
        (* only consider a mident when inside an application and then assume it was 
           abstracted in some way rather than troubling to track exactly how and if relevantly
           abstracted. *)
        if !level>0 then proc_global p;
        me
 
-    | Tmod_apply(fn,farg,c)->
+    | Tmod_apply(_fn,_farg,_c)->
        (* only ident modules referred to in functor applications *)
        decr level;
        me
@@ -700,6 +667,7 @@ let rec split (str:structure) =
     (remapped, [], Env.empty)
 
 and process_cmt modname file=
+  let valid = ref true in
   let inlib = is_library file in
   let cmt = Cmt_format.read_cmt file in
   check_consistency cmt file;
@@ -709,11 +677,11 @@ and process_cmt modname file=
        (* if it didn't compile how can there be an exec? *)
        failwith ("Genprint: "^modname^".cmt file is not complete. Failed compilation?")
   in
-  let sign, changed, initial_env =
-    (* when the module is of the stdlib/libdir need only obtain the struct sig *)
+  let valid_deps, str, sign, _changed, _xinitial_env =
+      (* when the module is of the stdlib/libdir need only obtain the struct sig *)
     if inlib then
       (* assume a library module does not need any processing other than by dodging its .cmi *)
-      str.str_type, false, cmt.cmt_initial_env
+      true, str, str.str_type, false, cmt.cmt_initial_env
     else
       (* save the state for calling function *)
       let pre_sigs = !modules_for_tc in
@@ -722,16 +690,18 @@ and process_cmt modname file=
       let unchanged, changed, tc_env = split str in
 
       (* Printf.printf "SPLIT         %s  %d(%d/%d)\n" modname (List.length str.str_items)(List.length unchanged)(List.length changed); *)
-      let changed_str, sign, new_initial_env = 
+      let changed_str, sign, new_initial_env =
+        let str={str with str_items=changed}in
+        let when_no_tc = (str, [], cmt.cmt_initial_env) in
         if changed<>[] then        (* something to tc *)
-          let str={str with str_items=changed}in
           try
             (* env-of often fails for lack of a path to a cmi *)
             let tc_env = Envaux.env_of_only_summary tc_env in
             let pstr = Untypeast.untype_structure str in
+            let sigdeps = List.map (fun gs -> gs.gs_sig) !modules_for_tc in
             let uniq_mods = List.fold_left (fun acc sg ->
                                 if List.memq sg acc then acc else sg::acc)
-                              [] !modules_for_tc in
+                              [] sigdeps in
             let senv = Env.add_signature uniq_mods tc_env in
 
 #if OCAML_VERSION < (4,08,0)
@@ -742,20 +712,33 @@ and process_cmt modname file=
              (* the new signature might expose unabstracted types  *)
              let env = Env.add_signature uniq_mods cmt.cmt_initial_env in
              changed_str, sign, env
-          with exn ->
-            Location.report_exception Format.std_formatter exn;
-            (* assert false *)
-            failwith ("Genprint: unable to process module "^modname^". Perhaps cmt/load-path is not correct.")
+          (* with exn -> *)
+          with
+          | Not_found ->
+             if not !ignore_missing then
+               prerr_endline ("Genprint: unable to process module "^modname
+                              ^" - the cmt/load-path probably not correct.\n");
+             (* previously the fallthrough of Notfound would <abstr> the originating
+                abstract type even if current module may have nothing to do with it.
+                this is because whole file is being processed.
+                the thing to do is not record the sig. *)
+             valid:=false;
+             when_no_tc
+          | exn ->
+             prerr_endline ("Genprint: unable to process module "^modname
+                            ^" - please file an issue!\n");
+            (* Argh! this re-raises the exception if unrecognised *)
+            if debug then
+              (Printexc.print
+                (Location.report_exception Format.err_formatter) exn; assert false);
+            when_no_tc
         else
         (* no need for any tc *)
           (* in which case there is nothing to change about the initial env *)
-          {str with str_items=[]}
-         ,[]
-         ,cmt.cmt_initial_env
+          when_no_tc
       in
-      modules_for_tc:=pre_sigs;
 
-(* Printf.printf "STATS: %s ==> unch=%d chg=%d ==%d, partstr=%d sig=%d origsig=%d\n" 
+(* Printf.printf "STATS: %s ==> unch=%d chg=%d ==%d, partstr=%d sig=%d origsig=%d  mods-for-tc=%d\n" 
  *   modname
  *       (List.length unchanged)
  *       (List.length changed)
@@ -763,13 +746,18 @@ and process_cmt modname file=
  *       (List.length changed_str.str_items)
  *       (List.length sign)
  *       (List.length str.str_type)
+ *       (List.length !modules_for_tc)
  * ; *)
+
+      let valid_deps = List.for_all (fun gs-> gs.gs_valid) !modules_for_tc in
+      (* restore caller state *)
+      modules_for_tc:=pre_sigs;
       (* recompose the two halves of the structure, unchanged and the re-tc'd *)
       let newstr={changed_str with str_items=unchanged@ changed_str.str_items} in
       (* collection of %pr's now with unabstracted types *)
       I.iter_structure newstr;
       (* just shadow the existing decls *)
-      str.str_type @ sign, changed<>[], new_initial_env
+      valid_deps, newstr, str.str_type @ sign, changed<>[], new_initial_env
     in
     let modid = Ident.create_persistent modname in
     let md_loc = Location.none in
@@ -794,22 +782,29 @@ and process_cmt modname file=
       )
 #endif
     in
-    record_sig modsig file;
-    modsig
+    let valid = !valid && valid_deps in
+    record_sig valid modsig file str
 
 (* the module in which a %pr appears doesn't need to augment an env with its sig
    as each %pr will pick up a new env directly from regenerated typedtree. *)
 
 (* a visited file's generated signature *)
-and find_sig modname=
+and find_gsig modname cmtfile=
   (* module names are resolved in the context of the current loadpath so
      in case of name re-use better to use the path as a key. *)
-  let cmtfile = find_cmt modname in
   try
-    let gsig = find_gsig cmtfile(*modname*) in
-    gsig.gs_sig
+    find_globalsig cmtfile
   with Not_found->
     process_cmt modname cmtfile
+
+and find_gsig2 modname=
+  let cmtfile = find_cmt modname in
+  find_gsig modname cmtfile
+
+and find_sig modname=
+  let cmtfile = find_cmt modname in
+  let gsig = find_gsig modname cmtfile in
+  gsig.gs_sig
 
 and process_local_cmt modname=
   ignore@@
@@ -820,6 +815,7 @@ and process_local_cmt modname=
 
 and module_for_tc p =
   (* Stdlib.Map.Make - really want Stdlib__map.Make *)
+(* Printf.printf "MOD FOR TC +1: %s\n" (Path.name p); *)
 #if OCAML_VERSION < (4,08,0)
   let p=Env.normalize_path None Env.empty p in
 #else
@@ -828,20 +824,19 @@ and module_for_tc p =
   let modid=Path.head p in
   let modname=Ident.name modid in
   try
-    let modsig = find_sig modname in
-    modules_for_tc := modsig :: !modules_for_tc;
+    let gsig = find_gsig2 modname in
+    modules_for_tc := gsig :: !modules_for_tc;
   (* if non-existent just allow to remain abstract which will be intercepted in [unabstract]  *)
   with Not_found-> ()
 
-(* and st = new cache process_cmt *)
-
-(* probably unnecessary but too much in the way for now *)
+(* fwd decl probably unnecessary but too much in the way for now *)
 let _= process_cmt_fwd:=process_cmt
 let _=load_cache()
 
 
 (* side-step the abstract types of a cmi to get at the declarations *)
 let unabstract_type p env mkout =
+(* Printf.printf "UNABSTRACT: %s\n" (Path.name p); *)
   let modid = Path.head p in
   if not@@Ident.global modid then      (*  *) raise Not_found;
   let modname = Ident.name modid in 
@@ -849,11 +844,13 @@ let unabstract_type p env mkout =
   (* references to this module will now not consult the .cmi *)
   let newenv =   Env.add_signature [modsig] env in
 
-  (* is the wanted type still abstract? Bigarray.Genarray.t is external/opaque *)
+  (* is the wanted type still abstract? Bigarray.Genarray.t is example of external/opaque *)
   begin
     let decl = Env.find_type p newenv in
     match decl with
-    | {type_kind = Type_abstract; type_manifest = None} -> raise Not_found (* <abstr> *)
+    | {type_kind = Type_abstract; type_manifest = None} ->
+(* Printf.printf "STILL ABSTRACT: %s\n" (Path.name p); *)
+       raise Not_found (* <abstr> *)
     | _-> ()
   end;
 
@@ -884,7 +881,7 @@ let unabstract_type p env mkout =
   in
   let open Outcometree in
   let printer ppf = 
-  (* type name not wanted, only the path preceding it *)
+    (* type name not wanted, only the path preceding it *)
     let modname =
       (* Oprint puts out Stdlib__xxxx so this is inconsistent with that ...*)
 #if OCAML_VERSION >= (4,07,0)
@@ -918,14 +915,12 @@ module EvalPath = struct
   let eval_path env p = try eval_path env p with Symtable.Error _ -> raise Error
   let same_value v1 v2 = (v1 == v2)
 *)
- let eval_address _env = failwith "evalpath: unimplemented"
- (* let eval_path _env _p = failwith "evalpath: unimplemented" *)
+ let eval_address _addr = Obj.repr 0
  let eval_path _env _p = Obj.repr 0
- (* let same_value _v1 _v2 = failwith "evalpath: unimplemented" *)
  (* let same_value v1 v2 = (v1 == v2) *)
  (* as this is originally for the toplevel not sure if it is relevant here.
     assuming homonyms not possible and extension paths always resolve uniquely *)
- let same_value v1 v2 = true
+ let same_value _v1 _v2 = true
 
  let unabstract_type = unabstract_type
 end
@@ -1058,7 +1053,7 @@ let printer_joint install fn inf =
   let count,srcfile = unpack inf in
   let install()=
     let key = (count,srcfile) in
-    let p,ty,env = find_pr key in
+    let p,_ty,env = find_pr key in (* ty not needed? *)
     (* let env = Envaux.env_of_only_summary env in *)
     let (ty_arg, ty) =
       match_printer_type env p in
@@ -1083,3 +1078,82 @@ let _=
   at_exit save_cache
 
 
+(* for debugger.
+   the idea is use an event location in place of a %pr to identify scope and thus extract
+   an appropriate env.
+ *)
+let refloc= ref Location.none
+let refenv = ref Env.empty
+
+#if OCAML_VERSION < (4,09,0)
+open TypedtreeIter
+module M2 : IteratorArgument =
+struct
+  include DefaultIteratorArgument
+  let scan_for_location exp=
+    match exp with
+    | {exp_loc=loc;exp_env=env} ->
+       if loc= !refloc then
+         (refenv:=env; raise Exit)
+
+  let enter_expression = scan_for_location
+end
+module I2 = MakeIterator(M2)
+
+#else
+module I2 = struct
+  let scan_for_location sub exp=
+    match exp with
+    | {exp_loc=loc;exp_env=env} ->
+       if loc= !refloc then
+         (refenv:=env; raise Exit);
+       Tast_iterator.default_iterator.expr sub exp
+
+  let iter_structure = Tast_iterator.(default_iterator.structure
+                         {default_iterator with
+                           expr=scan_for_location})
+end
+#endif
+
+(* debugger interface.
+   the loc fname could be used to differentiate between identically named modules living
+   in the same project. but with cwd prepended it's dirname is not on the _build path
+   and not therefore right for limiting the search space for a corresponding cmt file 
+   (not stored alongside src under dune).
+   so using only the module name for now.
+ *)
+let debug_on_module loc modname =
+  if !ppx_mode then begin
+      empty_cache();
+      ppx_mode:=false;
+      print_endline "resetting Genprint cache";
+    end;
+  (* ensure the cmt corresponding to the debugger frame is processed along with dependencies *)
+  let gsig= find_gsig2 modname in
+  (* everything requires the correct loadpath be setup but that must now come from -I's to the 
+     debugger *)
+  (* set_loadpath gsig.gs_loadpath; *)
+  refloc:=loc;                  (* setup for search of this loc *)
+  refenv:=Env.empty;            (* store resultant env corresponding to loc *)
+  begin try match gsig.gs_structure with
+  | Some str -> I2.iter_structure str
+  | None -> assert false
+  with Exit -> () end;
+  (* this replaces the env being used in the debugger, for printing, not for the value *)
+  !refenv
+
+(* how to arrange for particular exceptions from compiler infrastructure:
+  | Cmi_format.Error e ->
+      eprintf "Debugger [version %s] environment error:@ @[@;" Config.version;
+      Cmi_format.report_error err_formatter e;
+      eprintf "@]@.";
+      exit 2
+
+or centrally:
+  with x ->
+    Location.report_exception ppf x;
+    exit 2
+*)
+
+(* let _=
+ *   Printexc.record_backtrace true *)

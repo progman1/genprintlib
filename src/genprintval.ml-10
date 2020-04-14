@@ -385,9 +385,7 @@ module Make(O : OBJ)(EVP : EVALPATH with type valu = O.t) = struct
                    EVP.unabstract_type path env mkout
                     (* Oval_stuff "<abstr>" *)
                 | {type_kind = Type_abstract; type_manifest = Some body} ->
-                    tree_of_val depth obj
-                      (try Ctype.apply env decl.type_params body ty_list with
-                         Ctype.Cannot_apply -> abstract_type)
+                    tree_of_val depth obj (instantiate_type env decl.type_params ty_list body)
                 | {type_kind = Type_variant constr_list; type_unboxed} ->
                     let unbx = type_unboxed.unboxed in
                     let tag =
@@ -409,13 +407,7 @@ module Make(O : OBJ)(EVP : EVALPATH with type valu = O.t) = struct
                     begin
                       match cd_args with
                       | Cstr_tuple l ->
-                          let ty_args =
-                            List.map
-                              (function ty ->
-                                try Ctype.apply env type_params ty ty_list with
-                                  Ctype.Cannot_apply -> abstract_type)
-                              l
-                          in
+                          let ty_args = instantiate_types env type_params ty_list l in
                           tree_of_constr_with_args (tree_of_constr env path)
                             (Ident.name cd_id) false 0 depth obj
                             ty_args unbx
@@ -592,6 +584,13 @@ module Make(O : OBJ)(EVP : EVALPATH with type valu = O.t) = struct
             outval_of_untyped_exception bucket
         | None ->
             Oval_stuff "<extension>"
+
+    and instantiate_type env type_params ty_list ty =
+      try Ctype.apply env type_params ty ty_list with
+        Ctype.Cannot_apply -> abstract_type
+
+    and instantiate_types env type_params ty_list args =
+          List.map (instantiate_type env type_params ty_list) args
 
     and find_printer depth env ty =
       let rec find = function

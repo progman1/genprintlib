@@ -1,7 +1,10 @@
-Genprint v0.3
+Genprint v0.4
 ----------------
 
 - integration with ocamldebug (4.07.1/4.10.0 only)
+
+Genprint v0.3
+----------------
 
 - drawbacks of the prior version dealt with:
   * didn't work at all on 4.08

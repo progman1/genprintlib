@@ -169,7 +169,7 @@ A personal obstacle to using __ocamldebug__ has been the frustrating appearance 
 ```<abstr>``` for many a value I wanted to look at, especially at the
 thrashing-around-without-a-clue stage of debugging when I'd rather not be coding 
 printing functions and installing them under the debugger only to abandon them when it 
-becomes apparent a particular is of no interest after all.
+becomes apparent a particular value is of no interest after all.
 This repo contains two dunified versions of the debugger extracted from compiler sources,
 modified to use __Genprint__ as the default printer. The modifications are minor
 and easily transferred to other versions.

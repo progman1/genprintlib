@@ -52,5 +52,6 @@
         genprintval.ml-8
         genprintval.ml-9
         genprintval.ml-10
+        genprintval.ml-11
  )
  (action (run %{ocaml} unix.cma mkgenprintval.ml)))

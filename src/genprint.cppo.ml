@@ -366,14 +366,14 @@ let check_consistency cmt file=
           | Some crc ->
               Consistbl.check crc_interfaces name crc "" (*cmt.cmt_sourcefile*))
       cmt.cmt_imports
-  with Consistbl.Inconsistency(_name, _source, _auth) ->
+  with Consistbl.Inconsistency _ ->
     failwith @@ "Genprint: inconsistency between "^ file ^" and this program")
 
 (* intercept calls to particular functions in order to grab the types involved *)
-let genprint = Longident.parse "Genprint.print"
-let genprint_return = Longident.parse "Genprint.print_with_return"
-let genprint_printer = Longident.parse "Genprint.install_printer"
-let genprint_remove_printer = Longident.parse "Genprint.remove_printer"
+let genprint = Longident.(Ldot (Lident "Genprint", "print"))
+let genprint_return = Longident.(Ldot (Lident "Genprint", "print_with_return"))
+let genprint_printer = Longident.(Ldot (Lident "Genprint", "install_printer"))
+let genprint_remove_printer = Longident.(Ldot (Lident "Genprint", "remove_printer"))
 
 (* typedtrees are iterated over to find occurrences of [%pr] et al, associating type info with 
    them *)
@@ -386,7 +386,11 @@ let intercept_expression _sub exp=
           _;                     (* the string *)
           _, Some {exp_desc=Texp_tuple [ (* the value of any type, with extras stuffed in *)
               {exp_desc=Texp_constant(Const_int count)};
+#if OCAML_VERSION < (4, 11, 0)
               {exp_desc=Texp_constant(Const_string(file,_))};
+#else
+              {exp_desc=Texp_constant(Const_string(file,_,_))};
+#endif
               _;
            ]};
           (* though the ppx used two apply's it ends up merged  *)
@@ -401,7 +405,11 @@ let intercept_expression _sub exp=
           _;                     (* the string *)
           _, Some {exp_desc=Texp_tuple [ (* the value of any type, with extras stuffed in *)
               {exp_desc=Texp_constant(Const_int count)};
+#if OCAML_VERSION < (4, 11, 0)
               {exp_desc=Texp_constant(Const_string(file,_))};
+#else
+              {exp_desc=Texp_constant(Const_string(file,_,_))};
+#endif
               _;
            ]}
         ]);
@@ -417,7 +425,11 @@ let intercept_expression _sub exp=
           _, Some ({exp_loc=loc} as fn);
           _, Some {exp_desc=Texp_tuple [ (* the value of any type, with extras stuffed in *)
               {exp_desc=Texp_constant(Const_int count)};
+#if OCAML_VERSION < (4, 11, 0)
               {exp_desc=Texp_constant(Const_string(file,_))};
+#else
+              {exp_desc=Texp_constant(Const_string(file,_,_))};
+#endif
               _;
            ]};
         ])}
@@ -775,6 +787,9 @@ and process_cmt modname file=
                        {md_type = Mty_signature sign;
                         md_attributes = [];
                         md_loc;
+#if OCAML_VERSION >= (4, 11, 0)
+                        md_uid = Types.Uid.of_compilation_unit_id modid;
+#endif
                        },
                        Trec_not,
                        Exported
@@ -872,10 +887,14 @@ let unabstract_type p env mkout =
     | Mty_signature sg ->
        Env.(without_cmis (open_signature Fresh p) sg newenv)
     | _ -> assert false
-#else
+#elif OCAML_VERSION < (4, 11, 0)
     match Env.(without_cmis (open_signature Fresh p) newenv) with
     | Some env->env
     | None->assert false 
+#else
+    match Env.(without_cmis (open_signature Fresh p) newenv) with
+    | Ok env->env
+    | Error _->assert false
 #endif
     | exception Not_found -> assert false
   in

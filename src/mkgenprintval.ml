@@ -23,6 +23,9 @@ let _=
   )else
   if v < "4.10.0" then(
     Unix.rename "genprintval.ml-9" "genprintval.ml";
-  )else(
+  )else
+  if v < "4.11.0" then(
     Unix.rename "genprintval.ml-10" "genprintval.ml";
+  )else(
+    Unix.rename "genprintval.ml-11" "genprintval.ml";
   )
